@@ -1886,7 +1886,14 @@
                 "reason": "C、G 段虽都在讲社区建设，但全篇只有 K 段涉及“意识形态（ideologies）”和“差异小社群”。"
               }
             }
-          ]
+          ],
+          "isLongReading": true,
+          "qRange": [
+            36,
+            45
+          ],
+          "sourceCitation": "2025年6月六级第1套 Section B",
+          "sourceLabel": "Public Libraries Online 原文"
         },
         "translation": {
           "placeholder": true,
@@ -3654,7 +3661,14 @@
                 "reason": "G、H 段也有 Feist 的观点，但都在讨论创造力，只有 N 段讨论“从不独处就难以自我觉察”。"
               }
             }
-          ]
+          ],
+          "isLongReading": true,
+          "qRange": [
+            36,
+            45
+          ],
+          "sourceCitation": "2025年6月六级第2套 Section B",
+          "sourceLabel": "BBC Future 原文"
         },
         "translation": {
           "placeholder": true,
@@ -5331,7 +5345,14 @@
                 "reason": "O 段呼吁未来继续追求更高效率（continue to work for greater efficiencies），而 J 段总结的是过去 70 年已经取得的提效减排成果。"
               }
             }
-          ]
+          ],
+          "isLongReading": true,
+          "qRange": [
+            36,
+            45
+          ],
+          "sourceCitation": "2025年6月六级第3套 Section B",
+          "sourceLabel": "UC Davis CLEAR Center 原文"
         },
         "translation": {
           "placeholder": true,
