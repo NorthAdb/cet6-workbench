@@ -5647,6 +5647,12 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
           EXAMS_REGISTRY[pack.year].sets[setKey] = { label: setVal.label || setKey, modules: {} };
         }
         Object.entries(setVal.modules || {}).forEach(([mKey, mVal]) => {
+          if (mKey === "longReading" && mVal && !mVal.placeholder) {
+            mVal.isLongReading = true;
+            if (!mVal.qRange) mVal.qRange = [36, 45];
+            if (!mVal.sourceCitation) mVal.sourceCitation = mVal.sourceNote || "";
+            if (!mVal.sourceLabel) mVal.sourceLabel = "外刊原文";
+          }
           EXAMS_REGISTRY[pack.year].sets[setKey].modules[mKey] = mVal;
         });
       });
@@ -7187,14 +7193,15 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       renderLoadedPacksList();
       renderAll();
 
-      // 启动时自动加载 IndexedDB 增量真题包、仓库 manifest.json 及 Gist 云端拉取
+      // 启动时先加载本地 IndexedDB 增量真题包，再拉取仓库 manifest.json 覆盖，确保线上新版永远优先
       loadAllPacksFromIDB().then(packs => {
         if (packs.length) {
           packs.forEach(pk => mergePaperPack(pk, "本地持久包"));
           renderAll();
         }
+      }).finally(() => {
+        autoLoadRepoManifest();
       });
-      autoLoadRepoManifest();
       const initCfg = loadGistCfg();
       if (initCfg.token && initCfg.gistId) {
         setSyncStatus("ok", "☁️ 已连接");
