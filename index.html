@@ -5525,7 +5525,17 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
         });
       }
       saveUserNotebook();
-      renderAll();
+      document.body.addEventListener("click", (e) => {
+      const aBtn = e.target.closest("[data-play-audio]");
+      if (aBtn) {
+        const url = aBtn.getAttribute("data-play-audio");
+        if (url && typeof window.Audio === "function") {
+          new window.Audio(url).play().catch(() => {});
+        }
+      }
+    });
+    healNotebookUndefinedEntries();
+    renderAll();
     }
 
     function getCurrentModule() {
@@ -6408,6 +6418,171 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       }).join("");
     }
 
+    const ONLINE_DICT_CACHE_KEY = "cet6_online_dict_cache_v1";
+    function getOnlineDictCache() {
+      try { return JSON.parse(localStorage.getItem(ONLINE_DICT_CACHE_KEY) || "{}"); } catch (_) { return {}; }
+    }
+    function setOnlineDictCache(key, data) {
+      try {
+        const cache = getOnlineDictCache();
+        cache[key] = data;
+        const keys = Object.keys(cache);
+        if (keys.length > 300) {
+          keys.slice(0, keys.length - 300).forEach(k => delete cache[k]);
+        }
+        localStorage.setItem(ONLINE_DICT_CACHE_KEY, JSON.stringify(cache));
+      } catch (_) {}
+    }
+
+    function normalizeDictEntry(entry) {
+      if (!entry) return null;
+      if (typeof entry === "string") {
+        const str = entry.trim();
+        const posMatch = str.match(/^((?:(?:n|v|vt|vi|adj|adv|prep|conj|pron|interj|phr)\.)(?:\s*\/\s*(?:n|v|vt|vi|adj|adv|prep|conj|pron|interj|phr)\.)*)\s*/i);
+        return {
+          pos: posMatch ? posMatch[1] : "",
+          phonetic: "",
+          zh: str,
+          syn: "",
+          isBrief: true
+        };
+      }
+      return {
+        pos: entry.pos || "",
+        phonetic: entry.phonetic || "",
+        zh: entry.zh || "",
+        syn: entry.syn || "",
+        isBrief: !entry.phonetic && !entry.syn
+      };
+    }
+
+    function healNotebookUndefinedEntries() {
+      let changed = false;
+      (state.userNotebook || []).forEach(item => {
+        if (!item.meaning || item.meaning === "undefined" || item.meaning === "[object Object]") {
+          const lw = (item.word || "").toLowerCase();
+          if (VOCAB_DB[lw]) { item.meaning = VOCAB_DB[lw].meanings[0]; changed = true; }
+          else if (MINI_DICT[lw]) { item.meaning = normalizeDictEntry(MINI_DICT[lw]).zh; changed = true; }
+          else if (PHRASE_DICT[lw]) { item.meaning = normalizeDictEntry(PHRASE_DICT[lw]).zh; changed = true; }
+        }
+      });
+      if (changed) saveUserNotebook();
+    }
+
+    function escapeHtmlAttr(str) {
+      return String(str || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    async function fetchOnlineDictionary(term, isPhrase) {
+      const cacheKey = term.toLowerCase();
+      const cached = getOnlineDictCache()[cacheKey];
+      if (cached) return cached;
+
+      const posCnMap = { noun: "n.", verb: "v.", adjective: "adj.", adverb: "adv.", preposition: "prep.", conjunction: "conj.", pronoun: "pron.", interjection: "interj." };
+      const reqs = [
+        fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&dt=bd&q=${encodeURIComponent(term)}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        isPhrase ? Promise.resolve(null) : fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(term)}&langpair=en|zh-CN`).then(r => r.ok ? r.json() : null).catch(() => null)
+      ];
+      const [gtxData, enData, mmData] = await Promise.all(reqs);
+
+      let zhParts = [];
+      let mainZh = "";
+      if (Array.isArray(gtxData)) {
+        if (Array.isArray(gtxData[0])) {
+          mainZh = gtxData[0].map(seg => seg && seg[0] ? seg[0] : "").join("").trim();
+        }
+        if (Array.isArray(gtxData[1])) {
+          gtxData[1].forEach(group => {
+            if (group && group[0] && Array.isArray(group[1]) && group[1].length) {
+              const p = posCnMap[String(group[0]).toLowerCase()] || group[0];
+              zhParts.push(`${p} ${group[1].slice(0, 5).join("，")}`);
+            }
+          });
+        }
+      }
+      if (!zhParts.length && mainZh && mainZh.toLowerCase() !== term.toLowerCase()) {
+        zhParts.push(mainZh);
+      }
+      if (!zhParts.length && mmData?.responseData?.translatedText) {
+        const mt = String(mmData.responseData.translatedText).trim();
+        if (mt && mt.toLowerCase() !== term.toLowerCase()) zhParts.push(mt);
+      }
+
+      let phonetic = "", audio = "", posText = "", synText = "", enDefs = [];
+      if (Array.isArray(enData) && enData[0]) {
+        const item = enData[0];
+        phonetic = item.phonetic || (item.phonetics?.find(x => x && x.text)?.text || "");
+        audio = item.phonetics?.find(x => x && x.audio)?.audio || "";
+        const meanings = item.meanings || [];
+        posText = meanings.map(m => posCnMap[m.partOfSpeech] || m.partOfSpeech).filter(Boolean).slice(0, 2).join(" / ");
+        const syns = Array.from(new Set(meanings.flatMap(m => [
+          ...(m.synonyms || []),
+          ...(m.definitions || []).flatMap(d => d.synonyms || [])
+        ]).filter(Boolean))).slice(0, 5);
+        synText = syns.join(", ");
+        meanings.forEach(m => {
+          (m.definitions || []).slice(0, 1).forEach(d => {
+            if (d.definition && enDefs.length < 2) {
+              enDefs.push({
+                pos: posCnMap[m.partOfSpeech] || m.partOfSpeech || "",
+                def: d.definition,
+                example: d.example || ""
+              });
+            }
+          });
+        });
+      }
+
+      const zhMeaning = zhParts.join("；");
+      if (!zhMeaning && !enDefs.length) return null;
+      const result = {
+        word: term,
+        phonetic,
+        audio,
+        pos: posText || (isPhrase ? "词组" : ""),
+        zh: zhMeaning || (enDefs[0]?.def || ""),
+        syn: synText,
+        enDefs,
+        source: "在线双语实时查询"
+      };
+      setOnlineDictCache(cacheKey, result);
+      return result;
+    }
+
+    async function enrichLookupResult(word, localResult, isPhrase) {
+      const online = await fetchOnlineDictionary(word, isPhrase);
+      if (!online) {
+        if (state.searchResult && state.searchResult.word === localResult.word) {
+          state.searchResult = { ...state.searchResult, enriching: false };
+          renderInspector();
+        }
+        return;
+      }
+      const mergedZh = online.zh && online.zh !== localResult.zh
+        ? (localResult.zh && !online.zh.includes(localResult.zh.replace(/^[a-z.\/\s]+/i, "").trim()) ? `${localResult.zh}；${online.zh}` : online.zh)
+        : (localResult.zh || online.zh);
+      const nbItem = findInNotebook(localResult.word);
+      if (nbItem && (!nbItem.meaning || nbItem.meaning === "undefined" || nbItem.meaning === "（点击生词本可自行补充释义）")) {
+        nbItem.meaning = mergedZh;
+        saveUserNotebook();
+      }
+      if (state.searchResult && state.searchResult.word === localResult.word) {
+        state.searchResult = {
+          ...state.searchResult,
+          phonetic: localResult.phonetic || online.phonetic,
+          audio: online.audio || "",
+          pos: localResult.pos || online.pos,
+          zh: mergedZh,
+          syn: localResult.syn || online.syn,
+          enDefs: online.enDefs || [],
+          source: localResult.source + " + 在线补全",
+          enriching: false
+        };
+        renderInspector();
+      }
+    }
+
     async function lookupWord(rawInput) {
       const q = rawInput.trim().toLowerCase().replace(/\s+/g, " ").replace(/^[^a-z]+|[^a-z-]+$/g, "");
       if (!q) return;
@@ -6418,8 +6593,26 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
         if (vPhraseKey) { state.searchResult = null; state.activeWordKey = vPhraseKey; renderAll(); return; }
         const pKey = PHRASE_DICT[q] ? q : Object.keys(PHRASE_DICT).find(k => q.includes(k) || k.includes(q));
         if (pKey) {
-          const pEntry = PHRASE_DICT[pKey];
-          state.searchResult = { word: pKey, phonetic: q !== pKey ? `已匹配词组（原划词：${q}）` : "", pos: pEntry.pos, zh: pEntry.zh, syn: pEntry.syn, source: "六级高频词组速查" };
+          const pNorm = normalizeDictEntry(PHRASE_DICT[pKey]);
+          const localRes = {
+            word: pKey,
+            phonetic: q !== pKey ? `已匹配词组（原划词：${q}）` : "",
+            pos: pNorm.pos || "词组",
+            zh: pNorm.zh,
+            syn: pNorm.syn,
+            source: "六级高频词组速查",
+            enriching: pNorm.isBrief
+          };
+          state.searchResult = localRes;
+          renderInspector();
+          if (pNorm.isBrief) enrichLookupResult(pKey, localRes, true);
+          return;
+        }
+        state.searchResult = { word: q, loading: true, isPhrase: true };
+        renderInspector();
+        const onlinePhrase = await fetchOnlineDictionary(q, true);
+        if (onlinePhrase) {
+          state.searchResult = onlinePhrase;
           renderInspector();
           return;
         }
@@ -6435,9 +6628,24 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       }
       for (const cand of candidates) {
         if (MINI_DICT[cand]) {
-          const m = MINI_DICT[cand];
-          state.searchResult = { word: cand, phonetic: cand !== q ? `${m.phonetic}（由 ${q} 还原原型）` : m.phonetic, pos: m.pos, zh: m.zh, syn: m.syn, source: "本文内置中文词典" };
+          const m = normalizeDictEntry(MINI_DICT[cand]);
+          const localRes = {
+            word: cand,
+            phonetic: cand !== q ? `${m.phonetic ? m.phonetic + " " : ""}（由 ${q} 还原原型）` : m.phonetic,
+            pos: m.pos,
+            zh: m.zh,
+            syn: m.syn,
+            source: "本文内置中文词典",
+            enriching: m.isBrief
+          };
+          const nbItem = findInNotebook(cand);
+          if (nbItem && (!nbItem.meaning || nbItem.meaning === "undefined")) {
+            nbItem.meaning = m.zh;
+            saveUserNotebook();
+          }
+          state.searchResult = localRes;
           renderInspector();
+          if (m.isBrief) enrichLookupResult(cand, localRes, false);
           return;
         }
       }
@@ -6445,29 +6653,16 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       state.searchResult = { word: q, loading: true };
       renderInspector();
       const targetTerm = IRREGULAR_LEMMAS[q] || q;
-      try {
-        const [zhRes, enRes] = await Promise.allSettled([
-          fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(targetTerm)}&langpair=en|zh-CN`),
-          fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(targetTerm)}`)
-        ]);
-        let zhMeaning = "", phonetic = "", posText = "", synText = "";
-        if (zhRes.status === "fulfilled" && zhRes.value.ok) {
-          const zhData = await zhRes.value.json();
-          zhMeaning = zhData?.responseData?.translatedText || "";
-        }
-        if (enRes.status === "fulfilled" && enRes.value.ok) {
-          const enData = await enRes.value.json();
-          const item = enData[0];
-          phonetic = item.phonetic || (item.phonetics?.find(x => x.text)?.text || "");
-          posText = (item.meanings || []).map(m => m.partOfSpeech).slice(0, 2).join(" / ");
-          synText = (item.meanings || []).flatMap(m => m.synonyms || []).slice(0, 4).join(", ");
-        }
-        if (zhMeaning) {
-          state.searchResult = { word: targetTerm, phonetic: targetTerm !== q ? `${phonetic}（由 ${q} 还原原型）` : phonetic, pos: posText || "在线查词", zh: zhMeaning, syn: synText || "可点击下方词典查看更多例句", source: "在线双语实时查询" };
-          renderInspector();
-          return;
-        }
-      } catch (err) {}
+      const online = await fetchOnlineDictionary(targetTerm, false);
+      if (online) {
+        state.searchResult = {
+          ...online,
+          phonetic: targetTerm !== q ? `${online.phonetic ? online.phonetic + " " : ""}（由 ${q} 还原原型）` : online.phonetic,
+          pos: online.pos || "在线查词"
+        };
+        renderInspector();
+        return;
+      }
       state.searchResult = { word: q, notFound: true };
       renderInspector();
     }
@@ -6480,16 +6675,16 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       const body = document.getElementById("inspector-body");
       if (state.searchResult) {
         const r = state.searchResult;
-        if (r.loading) { body.innerHTML = `<div class="py-8 text-center text-sm text-slate-500">正在查询 <strong>${r.word}</strong> ...</div>`; return; }
+        if (r.loading) { body.innerHTML = `<div class="py-8 text-center text-sm text-slate-500">正在联网查询 <strong>${escapeHtmlAttr(r.word)}</strong> ...</div>`; return; }
         if (r.notFound) {
           const inNb = Boolean(findInNotebook(r.word));
           body.innerHTML = `
             <div class="rounded-xl border border-stone-200 bg-stone-50 p-4 space-y-2.5 text-sm text-slate-700">
               <div class="flex items-center justify-between gap-2 flex-wrap">
-                <div class="font-bold text-slate-900">未在内置词典找到 "${r.word}"</div>
-                <button type="button" data-nb-toggle-word="${r.word.replace(/"/g, '&quot;')}" data-nb-toggle-meaning="（点击生词本可自行补充释义）" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${inNb ? 'bg-violet-600 text-white border-violet-700' : 'bg-violet-50 text-violet-800 border-violet-200 hover:bg-violet-100'}">${inNb ? '⭐ 已在生词本' : '➕ 加入生词本'}</button>
+                <div class="font-bold text-slate-900">未获取到 "${escapeHtmlAttr(r.word)}" 的在线释义</div>
+                <button type="button" data-nb-toggle-word="${escapeHtmlAttr(r.word)}" data-nb-toggle-meaning="（点击生词本可自行补充释义）" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${inNb ? 'bg-violet-600 text-white border-violet-700' : 'bg-violet-50 text-violet-800 border-violet-200 hover:bg-violet-100'}">${inNb ? '⭐ 已在生词本' : '➕ 加入生词本'}</button>
               </div>
-              <p class="text-xs text-slate-600">可先查下方双语词典，也可以直接加入你的「⭐ 生词本」并手写释义笔记：</p>
+              <p class="text-xs text-slate-600">当前网络可能暂时无法连接词典接口，可点下方外部词典查看，或直接加入生词本并手写释义：</p>
               <div class="flex flex-wrap gap-2 pt-1">
                 <a href="https://dict.youdao.com/result?word=${encodeURIComponent(r.word)}&lang=en" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-md bg-white border border-stone-300 text-xs font-semibold text-indigo-600 hover:bg-indigo-50">有道词典 ↗</a>
                 <a href="https://dictionary.cambridge.org/dictionary/english-chinese-simplified/${encodeURIComponent(r.word)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-md bg-white border border-stone-300 text-xs font-semibold text-indigo-600 hover:bg-indigo-50">剑桥词典 ↗</a>
@@ -6497,24 +6692,44 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
             </div>`;
           return;
         }
+        const metaLine = [r.pos, r.phonetic].filter(Boolean).join(" &nbsp; ");
+        const audioBtn = r.audio ? `<button type="button" data-play-audio="${escapeHtmlAttr(r.audio)}" class="px-2 py-0.5 rounded-md bg-white border border-stone-200 text-[11px] font-semibold text-slate-700 hover:bg-stone-100 transition" title="播放发音">🔊 发音</button>` : "";
+        const enDefsHtml = (r.enDefs && r.enDefs.length) ? `
+            <div class="rounded-xl bg-sky-50/70 border border-sky-200 p-3 text-[13px] text-slate-800 space-y-2">
+              <div class="text-xs font-bold text-sky-900">英英释义与例句</div>
+              ${r.enDefs.map(d => `
+                <div class="leading-relaxed">
+                  ${d.pos ? `<span class="font-semibold text-sky-800 mr-1">${escapeHtmlAttr(d.pos)}</span>` : ""}${escapeHtmlAttr(d.def)}
+                  ${d.example ? `<div class="text-xs text-slate-500 mt-0.5 italic">e.g. ${escapeHtmlAttr(d.example)}</div>` : ""}
+                </div>`).join("")}
+            </div>` : "";
+        const synHtml = r.syn ? `
+            <div class="rounded-xl bg-emerald-50/70 border border-emerald-200 p-3 text-[13px] text-emerald-950">
+              <span class="font-bold">近义表达：</span>${escapeHtmlAttr(r.syn)}
+            </div>` : "";
         body.innerHTML = `
           <div class="space-y-3">
             <div class="flex items-start justify-between gap-2 flex-wrap">
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
-                  <h4 class="text-xl font-bold text-slate-900">${r.word}</h4>
-                  <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800">${r.source}</span>
+                  <h4 class="text-xl font-bold text-slate-900">${escapeHtmlAttr(r.word)}</h4>
+                  <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800">${escapeHtmlAttr(r.source || "词典查询")}</span>
+                  ${audioBtn}
                 </div>
-                <p class="text-xs text-slate-500 mt-1">${r.pos} &nbsp; ${r.phonetic}</p>
+                ${metaLine ? `<p class="text-xs text-slate-500 mt-1">${metaLine}</p>` : ""}
+                ${r.enriching ? `<p class="text-[11px] text-indigo-500 mt-1">✨ 正在联网自动补全音标、英英释义与例句...</p>` : ""}
               </div>
-              <button type="button" data-nb-toggle-word="${r.word.replace(/"/g, '&quot;')}" data-nb-toggle-meaning="${(r.zh || '').replace(/"/g, '&quot;')}" class="px-3 py-1.5 rounded-lg text-xs font-bold border transition shrink-0 ${findInNotebook(r.word) ? 'bg-violet-600 text-white border-violet-700 shadow-sm' : 'bg-violet-50 text-violet-800 border-violet-200 hover:bg-violet-100'}">${findInNotebook(r.word) ? '⭐ 已收入生词本' : '➕ 加入我的生词本'}</button>
+              <button type="button" data-nb-toggle-word="${escapeHtmlAttr(r.word)}" data-nb-toggle-meaning="${escapeHtmlAttr(r.zh || '')}" class="px-3 py-1.5 rounded-lg text-xs font-bold border transition shrink-0 ${findInNotebook(r.word) ? 'bg-violet-600 text-white border-violet-700 shadow-sm' : 'bg-violet-50 text-violet-800 border-violet-200 hover:bg-violet-100'}">${findInNotebook(r.word) ? '⭐ 已收入生词本' : '➕ 加入我的生词本'}</button>
             </div>
             <div class="rounded-xl bg-stone-50 border border-stone-200 p-3.5 text-sm text-slate-900 leading-relaxed">
               <div class="text-xs font-bold text-slate-500 mb-1">常见中文释义</div>
-              ${r.zh}
+              ${escapeHtmlAttr(r.zh || "暂无中文释义")}
             </div>
-            <div class="rounded-xl bg-emerald-50/70 border border-emerald-200 p-3 text-[13px] text-emerald-950">
-              <span class="font-bold">近义表达：</span>${r.syn}
+            ${enDefsHtml}
+            ${synHtml}
+            <div class="flex flex-wrap gap-2 pt-0.5">
+              <a href="https://dict.youdao.com/result?word=${encodeURIComponent(r.word)}&lang=en" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-md bg-white border border-stone-200 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50">有道词典 ↗</a>
+              <a href="https://dictionary.cambridge.org/dictionary/english-chinese-simplified/${encodeURIComponent(r.word)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-md bg-white border border-stone-200 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50">剑桥词典 ↗</a>
             </div>
           </div>`;
         return;
@@ -7265,9 +7480,9 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
           let mean = (mEl.value || "").trim();
           if (!mean) {
             const lw = rawW.toLowerCase();
-            if (PHRASE_DICT[lw]) mean = PHRASE_DICT[lw];
+            if (PHRASE_DICT[lw]) mean = normalizeDictEntry(PHRASE_DICT[lw]).zh;
             else if (VOCAB_DB[lw]) mean = VOCAB_DB[lw].meanings[0];
-            else if (MINI_DICT[lw]) mean = MINI_DICT[lw];
+            else if (MINI_DICT[lw]) mean = normalizeDictEntry(MINI_DICT[lw]).zh;
             else mean = "（点击补充中文释义）";
           }
           if (!findInNotebook(rawW)) {
