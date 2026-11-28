@@ -181,6 +181,10 @@
           </select>
 
           <!-- 题型模块切换 -->
+          <button type="button" id="tab-btn-notebook" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 transition inline-flex items-center gap-1 shrink-0" title="展开/收起独立生词本（置顶视图）">
+            ⭐ 生词本 <span id="notebook-tab-count" class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-violet-600 text-white">0</span>
+          </button>
+
           <div id="module-nav" class="flex flex-wrap items-center gap-1 ml-1">
             <button type="button" data-module="readingA" class="mod-btn px-2.5 py-1 rounded-lg text-xs font-bold transition">仔细阅读 A</button>
             <button type="button" data-module="readingB" class="mod-btn px-2.5 py-1 rounded-lg text-xs font-bold transition">仔细阅读 B</button>
@@ -192,6 +196,9 @@
 
         <!-- 阅读辅助开关 -->
         <div class="flex flex-wrap items-center gap-1.5">
+          <button type="button" id="toggle-tap-lookup" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 transition" title="开启后单击任意英文单词即可查词（手机端友好）">
+            👆 点词查义：开
+          </button>
           <button type="button" id="toggle-traces" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition">
             🧭 痕迹：开
           </button>
@@ -238,6 +245,22 @@
 
   <!-- 主体工作区 -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+    <!-- 独立置顶生词本（手机/桌面一键展开，与做题区完全解耦） -->
+    <section id="panel-notebook" class="hidden mb-5 bg-white rounded-2xl border-2 border-violet-200 shadow-sm p-4 sm:p-5">
+      <div class="flex flex-wrap items-center justify-between pb-3 mb-3 border-b border-violet-100 gap-2">
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-base font-bold text-slate-900">⭐ 我的生词本</h2>
+          <button type="button" id="notebook-back-btn" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-slate-700 transition">← 收起返回做题</button>
+        </div>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button type="button" id="notebook-copy-btn" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-slate-700 transition">📋 复制清单</button>
+          <button type="button" id="notebook-import-btn" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition">⬆️ 导入</button>
+          <button type="button" id="notebook-export-btn" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white transition">⬇️ 导出 CSV</button>
+          <input type="file" id="notebook-import-file" accept=".csv,.json,text/csv,application/json" class="hidden" />
+        </div>
+      </div>
+      <div id="notebook-body" class="space-y-3"></div>
+    </section>
     <!-- 待补充模块占位提示 -->
     <div id="placeholder-workspace" class="hidden max-w-2xl mx-auto my-10 bg-white rounded-2xl border border-stone-200 shadow-sm p-8 text-center space-y-4">
       <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 text-2xl">📂</div>
@@ -257,7 +280,7 @@
           <div class="flex flex-wrap items-center justify-between gap-2 pb-3.5 mb-5 border-b border-stone-100">
             <div>
               <h2 id="passage-title" class="text-base sm:text-lg font-bold text-slate-900">Passage</h2>
-              <p class="text-xs text-slate-500 mt-0.5">悬停高光词预览释义，点击看辨析；鼠标直接划选任意生词或词组现查中文</p>
+              <p class="text-xs text-slate-500 mt-0.5">点击任意英文单词即可查词（手机/电脑均支持）；电脑端也可拖选词组现查中文</p>
             </div>
             <span id="passage-wc" class="text-xs font-medium px-2.5 py-1 rounded-md bg-stone-100 text-slate-600"></span>
           </div>
@@ -268,11 +291,10 @@
       <!-- 右侧 Sticky 工作台 (5列) -->
       <aside class="lg:col-span-5 lg:sticky lg:top-32">
         <div id="right-sidebar" class="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-          <div class="grid grid-cols-4 border-b border-stone-200 bg-stone-50/70">
-            <button type="button" id="tab-btn-quiz" class="py-2.5 text-[11.5px] font-bold text-slate-900 bg-white border-b-2 border-slate-900 transition">📝 做题动线</button>
-            <button type="button" id="tab-btn-vocab" class="py-2.5 text-[11.5px] font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition">📖 词汇查词</button>
-            <button type="button" id="tab-btn-notebook" class="py-2.5 text-[11.5px] font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition flex items-center justify-center gap-1">⭐ 生词本 <span id="notebook-tab-count" class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-violet-100 text-violet-800">0</span></button>
-            <button type="button" id="tab-btn-methods" class="py-2.5 text-[11.5px] font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition">📚 题型方法论</button>
+          <div class="grid grid-cols-3 border-b border-stone-200 bg-stone-50/70">
+            <button type="button" id="tab-btn-quiz" class="py-2.5 text-xs font-bold text-slate-900 bg-white border-b-2 border-slate-900 transition">📝 做题动线</button>
+            <button type="button" id="tab-btn-vocab" class="py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition">📖 词汇查词</button>
+            <button type="button" id="tab-btn-methods" class="py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition">📚 题型方法论</button>
           </div>
 
           <!-- Tab 1: 做题动线 -->
@@ -304,19 +326,7 @@
             <div id="inspector-body"></div>
           </div>
 
-          <!-- Tab 3: 我的生词本（用户划词收藏栏目） -->
-          <div id="panel-notebook" class="hidden p-4 sm:p-5 thin-scroll lg:max-h-[calc(100vh-12.5rem)] lg:overflow-y-auto">
-            <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-stone-100 gap-2">
-              <button type="button" id="notebook-back-btn" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">← 返回当前题目</button>
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <button type="button" id="notebook-copy-btn" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-stone-100 hover:bg-stone-200 text-slate-700 transition">📋 复制清单</button>
-                <button type="button" id="notebook-import-btn" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition">⬆️ 导入</button>
-                <button type="button" id="notebook-export-btn" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-violet-600 hover:bg-violet-700 text-white transition">⬇️ 导出 CSV</button>
-                <input type="file" id="notebook-import-file" accept=".csv,.json,text/csv,application/json" class="hidden" />
-              </div>
-            </div>
-            <div id="notebook-body" class="space-y-3"></div>
-          </div>
+
 
           <!-- Tab 3: 五大题型方法论 -->
           <div id="panel-methods" class="hidden p-4 sm:p-5 thin-scroll lg:max-h-[calc(100vh-12.5rem)] lg:overflow-y-auto">
@@ -337,6 +347,16 @@
   <!-- 悬浮词汇提示卡 -->
   <div id="hover-tooltip" class="hidden bg-slate-900 text-white rounded-xl px-3.5 py-2.5 shadow-xl text-xs">
     <div id="tooltip-content"></div>
+  </div>
+
+  <!-- 移动端底部查词抽屉（窄屏点击单词直接弹出，无需滚到底部） -->
+  <div id="mobile-lookup-backdrop" class="hidden fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-[1px] lg:hidden"></div>
+  <div id="mobile-lookup-sheet" class="hidden fixed inset-x-0 bottom-0 z-50 lg:hidden bg-white rounded-t-2xl border-t-2 border-indigo-200 shadow-2xl max-h-[74vh] flex flex-col">
+    <div class="flex items-center justify-between px-4 py-2.5 border-b border-stone-200 bg-stone-50/90 rounded-t-2xl shrink-0">
+      <span class="text-xs font-bold text-slate-700">📖 即时查词（点击空白处关闭）</span>
+      <button type="button" id="mobile-lookup-close-btn" class="px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-xs font-bold text-slate-600 hover:bg-stone-100">✕ 关闭</button>
+    </div>
+    <div id="mobile-lookup-body" class="p-4 overflow-y-auto thin-scroll"></div>
   </div>
 
   <script>
@@ -6675,7 +6695,7 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       const body = document.getElementById("inspector-body");
       if (state.searchResult) {
         const r = state.searchResult;
-        if (r.loading) { body.innerHTML = `<div class="py-8 text-center text-sm text-slate-500">正在联网查询 <strong>${escapeHtmlAttr(r.word)}</strong> ...</div>`; return; }
+        if (r.loading) { body.innerHTML = `<div class="py-8 text-center text-sm text-slate-500">正在联网查询 <strong>${escapeHtmlAttr(r.word)}</strong> ...</div>`; syncMobileLookupSheetIfOpen(); return; }
         if (r.notFound) {
           const inNb = Boolean(findInNotebook(r.word));
           body.innerHTML = `
@@ -6690,6 +6710,7 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
                 <a href="https://dictionary.cambridge.org/dictionary/english-chinese-simplified/${encodeURIComponent(r.word)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-md bg-white border border-stone-300 text-xs font-semibold text-indigo-600 hover:bg-indigo-50">剑桥词典 ↗</a>
               </div>
             </div>`;
+          syncMobileLookupSheetIfOpen();
           return;
         }
         const metaLine = [r.pos, r.phonetic].filter(Boolean).join(" &nbsp; ");
@@ -6732,6 +6753,7 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
               <a href="https://dictionary.cambridge.org/dictionary/english-chinese-simplified/${encodeURIComponent(r.word)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-md bg-white border border-stone-200 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50">剑桥词典 ↗</a>
             </div>
           </div>`;
+        syncMobileLookupSheetIfOpen();
         return;
       }
 
@@ -6785,6 +6807,7 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
             <span class="font-semibold text-slate-800">高频搭配：</span>${entry.collocation}
           </div>
         </div>`;
+      syncMobileLookupSheetIfOpen();
     }
 
     function renderMethods() {
@@ -6972,30 +6995,74 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       body.innerHTML = filterBar + quickAddForm + `<div class="space-y-2">${listHTML}</div>`;
     }
 
+    let topNotebookOpen = false;
+    let tapLookupEnabled = true;
+
+    function toggleTopNotebook(forceState) {
+      topNotebookOpen = typeof forceState === "boolean" ? forceState : !topNotebookOpen;
+      const nbPanel = document.getElementById("panel-notebook");
+      const nbBtn = document.getElementById("tab-btn-notebook");
+      if (nbPanel) nbPanel.classList.toggle("hidden", !topNotebookOpen);
+      if (nbBtn) {
+        nbBtn.className = topNotebookOpen
+          ? "px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-600 text-white border border-violet-700 shadow-sm transition inline-flex items-center gap-1 shrink-0"
+          : "px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 transition inline-flex items-center gap-1 shrink-0";
+      }
+      if (topNotebookOpen) {
+        renderNotebook();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      requestAnimationFrame(updateConnectorLine);
+    }
+
+    function openMobileLookupSheet() {
+      if (window.innerWidth >= 1024) return;
+      const sheet = document.getElementById("mobile-lookup-sheet");
+      const backdrop = document.getElementById("mobile-lookup-backdrop");
+      const body = document.getElementById("mobile-lookup-body");
+      const src = document.getElementById("inspector-body");
+      if (body && src) body.innerHTML = src.innerHTML;
+      if (sheet) sheet.classList.remove("hidden");
+      if (backdrop) backdrop.classList.remove("hidden");
+    }
+
+    function closeMobileLookupSheet() {
+      const sheet = document.getElementById("mobile-lookup-sheet");
+      const backdrop = document.getElementById("mobile-lookup-backdrop");
+      if (sheet) sheet.classList.add("hidden");
+      if (backdrop) backdrop.classList.add("hidden");
+    }
+
+    function syncMobileLookupSheetIfOpen() {
+      const sheet = document.getElementById("mobile-lookup-sheet");
+      const body = document.getElementById("mobile-lookup-body");
+      const src = document.getElementById("inspector-body");
+      if (sheet && !sheet.classList.contains("hidden") && body && src) {
+        body.innerHTML = src.innerHTML;
+      }
+    }
+
     function switchTab(tab) {
+      if (tab === "notebook") { toggleTopNotebook(true); return; }
       state.activeTab = tab;
       const panels = {
         quiz: document.getElementById("panel-quiz"),
         vocab: document.getElementById("panel-vocab"),
-        notebook: document.getElementById("panel-notebook"),
         methods: document.getElementById("panel-methods")
       };
       const btns = {
         quiz: document.getElementById("tab-btn-quiz"),
         vocab: document.getElementById("tab-btn-vocab"),
-        notebook: document.getElementById("tab-btn-notebook"),
         methods: document.getElementById("tab-btn-methods")
       };
       Object.keys(panels).forEach(k => {
         const active = k === tab;
         panels[k].classList.toggle("hidden", !active);
-        const extra = k === "notebook" ? " flex items-center justify-center gap-1" : "";
-        btns[k].className = (active
-          ? "py-2.5 text-[11.5px] font-bold text-slate-900 bg-white border-b-2 border-slate-900 transition"
-          : "py-2.5 text-[11.5px] font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition") + extra;
+        btns[k].className = active
+          ? "py-2.5 text-xs font-bold text-slate-900 bg-white border-b-2 border-slate-900 transition"
+          : "py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition";
       });
       if (tab === "methods") renderMethods();
-      if (tab === "notebook") renderNotebook();
       requestAnimationFrame(updateConnectorLine);
     }
 
@@ -7272,10 +7339,10 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
       // Tab 切换
       document.getElementById("tab-btn-quiz").addEventListener("click", () => switchTab("quiz"));
       document.getElementById("tab-btn-vocab").addEventListener("click", () => switchTab("vocab"));
-      document.getElementById("tab-btn-notebook").addEventListener("click", () => switchTab("notebook"));
+      document.getElementById("tab-btn-notebook").addEventListener("click", () => toggleTopNotebook());
       document.getElementById("tab-btn-methods").addEventListener("click", () => switchTab("methods"));
       document.getElementById("back-to-quiz-btn").addEventListener("click", () => switchTab("quiz"));
-      document.getElementById("notebook-back-btn").addEventListener("click", () => switchTab("quiz"));
+      document.getElementById("notebook-back-btn").addEventListener("click", () => toggleTopNotebook(false));
       document.getElementById("methods-back-btn").addEventListener("click", () => switchTab("quiz"));
 
       document.getElementById("notebook-copy-btn").addEventListener("click", () => {
@@ -7568,7 +7635,65 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
         const queryText = cleaned.replace(/\s+/g, " ");
         document.getElementById("word-search-input").value = queryText;
         lookupWord(queryText);
+        openMobileLookupSheet();
       }
+      function getEnglishWordAtPoint(clientX, clientY) {
+        let textNode = null, offset = 0;
+        if (document.caretRangeFromPoint) {
+          const r = document.caretRangeFromPoint(clientX, clientY);
+          if (r && r.startContainer && r.startContainer.nodeType === 3) {
+            textNode = r.startContainer;
+            offset = r.startOffset;
+          }
+        } else if (document.caretPositionFromPoint) {
+          const p = document.caretPositionFromPoint(clientX, clientY);
+          if (p && p.offsetNode && p.offsetNode.nodeType === 3) {
+            textNode = p.offsetNode;
+            offset = p.offset;
+          }
+        }
+        if (!textNode) return "";
+        const txt = textNode.textContent || "";
+        if (!txt.trim()) return "";
+        // 避免点击行尾空白处误触发行末单词：校验点击坐标与命中的字符矩形距离
+        try {
+          const checkRange = document.createRange();
+          const idx = Math.min(Math.max(offset, 0), Math.max(txt.length - 1, 0));
+          checkRange.setStart(textNode, idx);
+          checkRange.setEnd(textNode, Math.min(idx + 1, txt.length));
+          const rect = checkRange.getBoundingClientRect();
+          if (rect.width > 0 || rect.height > 0) {
+            const dx = clientX < rect.left ? rect.left - clientX : (clientX > rect.right ? clientX - rect.right : 0);
+            const dy = clientY < rect.top ? rect.top - clientY : (clientY > rect.bottom ? clientY - rect.bottom : 0);
+            if (dx > 22 || dy > 22) return "";
+          }
+        } catch (_) {}
+        const isWordChar = (ch) => /[A-Za-z'-]/.test(ch);
+        let s = offset, eIdx = offset;
+        if (s > 0 && !isWordChar(txt[s] || "") && isWordChar(txt[s - 1] || "")) s--;
+        if (!isWordChar(txt[s] || "")) return "";
+        while (s > 0 && isWordChar(txt[s - 1])) s--;
+        while (eIdx < txt.length && isWordChar(txt[eIdx])) eIdx++;
+        const word = txt.slice(s, eIdx).replace(/^['-]+|['-]+$/g, "");
+        if (word.length < 2 || !/^[A-Za-z][A-Za-z'-]*$/.test(word)) return "";
+        return word;
+      }
+
+      const tapLookupBtn = document.getElementById("toggle-tap-lookup");
+      if (tapLookupBtn) {
+        tapLookupBtn.addEventListener("click", () => {
+          tapLookupEnabled = !tapLookupEnabled;
+          tapLookupBtn.textContent = tapLookupEnabled ? "👆 点词查义：开" : "👆 点词查义：关";
+          tapLookupBtn.className = tapLookupEnabled
+            ? "px-2.5 py-1 rounded-full text-xs font-semibold border border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 transition"
+            : "px-2.5 py-1 rounded-full text-xs font-semibold border border-stone-200 bg-stone-100 text-slate-600 hover:bg-stone-200 transition";
+        });
+      }
+      const mobileBackdrop = document.getElementById("mobile-lookup-backdrop");
+      const mobileCloseBtn = document.getElementById("mobile-lookup-close-btn");
+      if (mobileBackdrop) mobileBackdrop.addEventListener("click", closeMobileLookupSheet);
+      if (mobileCloseBtn) mobileCloseBtn.addEventListener("click", closeMobileLookupSheet);
+
       document.body.addEventListener("mouseup", (e) => setTimeout(() => handleTextSelectionLookup(e), 12));
       document.body.addEventListener("dblclick", handleTextSelectionLookup);
 
@@ -7586,6 +7711,21 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
           state.activeWordKey = token.dataset.word;
           renderAll();
           switchTab("vocab");
+          openMobileLookupSheet();
+          return;
+        }
+
+        const userToken = e.target.closest(".user-vocab-token");
+        if (userToken) {
+          const selNow = window.getSelection().toString().trim();
+          if (selNow && Math.hypot(e.clientX - mouseDownPos.x, e.clientY - mouseDownPos.y) > 5) return;
+          e.stopPropagation();
+          const uw = userToken.dataset.userWord || userToken.textContent.trim();
+          if (uw) {
+            document.getElementById("word-search-input").value = uw;
+            lookupWord(uw);
+            openMobileLookupSheet();
+          }
           return;
         }
 
@@ -7662,8 +7802,18 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
             requestAnimationFrame(updateConnectorLine);
           };
 
-          // 若点击在选项英文文本区，微延迟 220ms 以便双击查词能够取消选项提交；点击字母框/空白处立即选中
+          // 若开启「点词查义」且点击在选项英文单词上，直接查词不误触作答；点 A/B/C/D 选项标或空白处立即作答
           if (e.target.closest(".opt-en-text")) {
+            if (tapLookupEnabled) {
+              const tappedWord = getEnglishWordAtPoint(e.clientX, e.clientY);
+              if (tappedWord) {
+                lastSelectionLookupAt = Date.now();
+                document.getElementById("word-search-input").value = tappedWord;
+                lookupWord(tappedWord);
+                openMobileLookupSheet();
+                return;
+              }
+            }
             if (e.detail >= 2) {
               if (pendingOptSelectTimer) { clearTimeout(pendingOptSelectTimer); pendingOptSelectTimer = null; }
               return;
@@ -7683,6 +7833,21 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
           else state.mastered.add(key);
           saveMastered();
           renderAll();
+          return;
+        }
+
+        // 单击任意英文单词即查（文章正文、长篇阅读段落、题干与解析区）
+        if (tapLookupEnabled && e.target.closest("#passage-container, #active-question-body")) {
+          if (e.target.closest("button, a, input, select, textarea, [data-jump-q], [data-select-q], [data-lr-pick], [data-lr-jump], [data-lr-cross], summary")) return;
+          const selNow = window.getSelection().toString().trim();
+          if (selNow && Math.hypot(e.clientX - mouseDownPos.x, e.clientY - mouseDownPos.y) > 5) return;
+          const tappedWord = getEnglishWordAtPoint(e.clientX, e.clientY);
+          if (tappedWord) {
+            lastSelectionLookupAt = Date.now();
+            document.getElementById("word-search-input").value = tappedWord;
+            lookupWord(tappedWord);
+            openMobileLookupSheet();
+          }
         }
       });
 
