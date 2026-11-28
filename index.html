@@ -81,6 +81,7 @@
     .trace-hit.trace-hover-focus { box-shadow: 0 0 0 2.5px #059669 !important; background-color: #bbf7d0 !important; }
 
     #hover-tooltip { position: fixed; z-index: 60; pointer-events: none; max-width: 300px; transition: opacity 0.12s ease; }
+    @media (hover: none), (pointer: coarse) { #hover-tooltip { display: none !important; } }
     #connector-svg { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 30; }
     .thin-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
     .thin-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
@@ -166,78 +167,86 @@
 
   <!-- 顶部真题切换与工具栏 -->
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-stone-200 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 space-y-2">
-      <!-- 第一行：年份 / 套卷 / 题型模块总控 -->
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold shrink-0">CET-6</span>
-          <select id="exam-year-select" aria-label="选择年份" class="text-xs font-bold bg-stone-100 hover:bg-stone-200 text-slate-900 rounded-lg px-2.5 py-1.5 border border-stone-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-900">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 lg:py-2.5 lg:space-y-2">
+      <!-- 顶栏核心行：手机端常驻单行（年份/套卷/生词本/菜单），桌面端完整展开 -->
+      <div class="flex flex-wrap items-center justify-between gap-1.5 lg:gap-2">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap w-full lg:w-auto">
+          <span class="hidden sm:inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold shrink-0">CET-6</span>
+          <select id="exam-year-select" aria-label="选择年份" class="text-xs font-bold bg-stone-100 hover:bg-stone-200 text-slate-900 rounded-lg px-2 py-1.5 border border-stone-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-900">
             <option value="2025-12">2025年12月</option>
           </select>
-          <select id="exam-set-select" aria-label="选择套卷" class="text-xs font-bold bg-stone-100 hover:bg-stone-200 text-slate-900 rounded-lg px-2.5 py-1.5 border border-stone-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <select id="exam-set-select" aria-label="选择套卷" class="text-xs font-bold bg-stone-100 hover:bg-stone-200 text-slate-900 rounded-lg px-2 py-1.5 border border-stone-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-900">
             <option value="set1" selected>第 1 套</option>
             <option value="set2">第 2 套</option>
             <option value="set3">第 3 套</option>
           </select>
-
-          <!-- 题型模块切换 -->
-          <button type="button" id="tab-btn-notebook" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 transition inline-flex items-center gap-1 shrink-0" title="展开/收起独立生词本（置顶视图）">
+          <button type="button" id="tab-btn-notebook" class="px-2.5 py-1.5 lg:py-1 rounded-lg text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 transition inline-flex items-center gap-1 shrink-0" title="展开/收起独立生词本（置顶视图）">
             ⭐ 生词本 <span id="notebook-tab-count" class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-violet-600 text-white">0</span>
           </button>
+          <button type="button" id="mobile-menu-toggle-btn" class="lg:hidden ml-auto px-2.5 py-1.5 rounded-lg text-xs font-bold bg-stone-100 hover:bg-stone-200 text-slate-800 border border-stone-200 transition inline-flex items-center gap-1.5 shrink-0" aria-expanded="false" title="展开题型切换、阅读设置与云同步">
+            <span id="mobile-sync-dot" class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+            <span id="mobile-menu-label">⚙️ 菜单</span>
+          </button>
+        </div>
+      </div>
 
-          <div id="module-nav" class="flex flex-wrap items-center gap-1 ml-1">
+      <!-- 折叠工具抽屉（手机端默认隐藏，点击 ⚙️ 菜单展开；桌面端 lg: 常驻展示） -->
+      <div id="header-tools-drawer" class="hidden lg:block mt-2 pt-2 lg:mt-0 lg:pt-0 border-t border-stone-100 lg:border-t-0 space-y-2.5 lg:space-y-2 max-h-[70vh] overflow-y-auto lg:max-h-none lg:overflow-visible thin-scroll">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <!-- 题型模块切换 -->
+          <div id="module-nav" class="flex flex-wrap items-center gap-1">
             <button type="button" data-module="readingA" class="mod-btn px-2.5 py-1 rounded-lg text-xs font-bold transition">仔细阅读 A</button>
             <button type="button" data-module="readingB" class="mod-btn px-2.5 py-1 rounded-lg text-xs font-bold transition">仔细阅读 B</button>
             <button type="button" data-module="longReading" class="mod-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition">长篇阅读</button>
             <button type="button" data-module="translation" class="mod-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition">翻译</button>
             <button type="button" data-module="writing" class="mod-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition">作文</button>
           </div>
+
+          <!-- 阅读辅助开关 -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" id="toggle-tap-lookup" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 transition" title="开启后单击任意英文单词即可查词（手机端友好）">
+              👆 点词查义：开
+            </button>
+            <button type="button" id="toggle-traces" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition">
+              🧭 痕迹：开
+            </button>
+            <div class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50/70 p-0.5 text-[11px] font-bold" title="切换译文排版方式">
+              <button type="button" data-trans-mode="sentence" class="trans-mode-btn px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-sm transition">逐句对照</button>
+              <button type="button" data-trans-mode="paragraph" class="trans-mode-btn px-2 py-0.5 rounded-full text-indigo-800 hover:bg-indigo-100 transition">段末整段</button>
+              <button type="button" data-trans-mode="hidden" class="trans-mode-btn px-2 py-0.5 rounded-full text-indigo-800 hover:bg-indigo-100 transition">隐藏译文</button>
+            </div>
+            <button type="button" id="toggle-sentences" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 transition">
+              🧩 长难句：展开
+            </button>
+            <div class="inline-flex items-center rounded-full border border-stone-200 bg-stone-50 p-0.5 text-[11px] font-bold" title="调节正文字号">
+              <button type="button" data-font-btn="sm" class="font-btn px-2 py-0.5 rounded-full text-slate-500 hover:text-slate-900">A-</button>
+              <button type="button" data-font-btn="md" class="font-btn px-2 py-0.5 rounded-full bg-white text-slate-900 shadow-sm">A</button>
+              <button type="button" data-font-btn="lg" class="font-btn px-2 py-0.5 rounded-full text-slate-500 hover:text-slate-900">A+</button>
+            </div>
+          </div>
         </div>
 
-        <!-- 阅读辅助开关 -->
-        <div class="flex flex-wrap items-center gap-1.5">
-          <button type="button" id="toggle-tap-lookup" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 transition" title="开启后单击任意英文单词即可查词（手机端友好）">
-            👆 点词查义：开
-          </button>
-          <button type="button" id="toggle-traces" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition">
-            🧭 痕迹：开
-          </button>
-          <div class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50/70 p-0.5 text-[11px] font-bold" title="切换译文排版方式">
-            <button type="button" data-trans-mode="sentence" class="trans-mode-btn px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-sm transition">逐句对照</button>
-            <button type="button" data-trans-mode="paragraph" class="trans-mode-btn px-2 py-0.5 rounded-full text-indigo-800 hover:bg-indigo-100 transition">段末整段</button>
-            <button type="button" data-trans-mode="hidden" class="trans-mode-btn px-2 py-0.5 rounded-full text-indigo-800 hover:bg-indigo-100 transition">隐藏译文</button>
+        <!-- 第二行：词汇高光筛选 + 进度与同步 -->
+        <div class="pt-2 lg:pt-1.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs font-semibold text-slate-500 mr-0.5">词汇高光:</span>
+            <button type="button" data-filter-btn="all" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-900 text-white ring-2 ring-slate-900 transition">全部</button>
+            <button type="button" data-filter-btn="must" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">🔴 必考核心</button>
+            <button type="button" data-filter-btn="cet6" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition">🟡 六级重点</button>
+            <button type="button" data-filter-btn="cet4" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100 transition">🔵 四级高频</button>
+            <button type="button" data-filter-btn="none" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-slate-600 hover:bg-stone-200 transition">关闭高光</button>
           </div>
-          <button type="button" id="toggle-sentences" class="px-2.5 py-1 rounded-full text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 transition">
-            🧩 长难句：展开
-          </button>
-          <div class="inline-flex items-center rounded-full border border-stone-200 bg-stone-50 p-0.5 text-[11px] font-bold" title="调节正文字号">
-            <button type="button" data-font-btn="sm" class="font-btn px-2 py-0.5 rounded-full text-slate-500 hover:text-slate-900">A-</button>
-            <button type="button" data-font-btn="md" class="font-btn px-2 py-0.5 rounded-full bg-white text-slate-900 shadow-sm">A</button>
-            <button type="button" data-font-btn="lg" class="font-btn px-2 py-0.5 rounded-full text-slate-500 hover:text-slate-900">A+</button>
+          <div class="flex flex-wrap items-center gap-2 lg:gap-3 text-[11px] text-slate-500">
+            <span class="hidden sm:inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-200 border border-emerald-500 inline-block"></span>正解依据</span>
+            <span class="hidden sm:inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-orange-100 border border-dashed border-orange-500 inline-block"></span>干扰挖坑点</span>
+            <span id="mastered-counter" class="text-xs font-semibold text-slate-700 bg-stone-100 px-2.5 py-0.5 rounded-full">已掌握 0 / 0</span>
+            <button type="button" id="open-pack-import-btn" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition" title="导入增量真题数据包 (.json)">📦 导入真题包</button>
+            <input type="file" id="paper-pack-file-input" accept=".json,application/json" class="hidden" />
+            <button type="button" id="open-sync-modal-btn" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-stone-300 transition flex items-center gap-1" title="GitHub Gist 私有云同步设置">
+              <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+              <span id="sync-status-label">☁️ 云同步</span>
+            </button>
           </div>
-        </div>
-      </div>
-
-      <!-- 第二行：词汇高光筛选 + 进度 -->
-      <div class="pt-1.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap items-center gap-1.5">
-          <span class="text-xs font-semibold text-slate-500 mr-0.5">词汇高光:</span>
-          <button type="button" data-filter-btn="all" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-900 text-white ring-2 ring-slate-900 transition">全部</button>
-          <button type="button" data-filter-btn="must" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">🔴 必考核心</button>
-          <button type="button" data-filter-btn="cet6" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition">🟡 六级重点</button>
-          <button type="button" data-filter-btn="cet4" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100 transition">🔵 四级高频</button>
-          <button type="button" data-filter-btn="none" class="filter-btn px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-slate-600 hover:bg-stone-200 transition">关闭高光</button>
-        </div>
-        <div class="flex items-center gap-3 text-[11px] text-slate-500">
-          <span class="hidden sm:inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-200 border border-emerald-500 inline-block"></span>正解依据</span>
-          <span class="hidden sm:inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-orange-100 border border-dashed border-orange-500 inline-block"></span>干扰挖坑点</span>
-          <span id="mastered-counter" class="text-xs font-semibold text-slate-700 bg-stone-100 px-2.5 py-0.5 rounded-full">已掌握 0 / 0</span>
-          <button type="button" id="open-pack-import-btn" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition" title="导入增量真题数据包 (.json)">📦 导入真题包</button>
-          <input type="file" id="paper-pack-file-input" accept=".json,application/json" class="hidden" />
-          <button type="button" id="open-sync-modal-btn" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-stone-300 transition flex items-center gap-1" title="GitHub Gist 私有云同步设置">
-            <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
-            <span id="sync-status-label">☁️ 云同步</span>
-          </button>
         </div>
       </div>
     </div>
@@ -7569,10 +7578,17 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
         lookupWord(document.getElementById("word-search-input").value);
       });
 
-      // 悬浮提示
+      // 悬浮提示（仅桌面鼠标悬停生效，手机/触屏禁用以免浮窗卡住挡字）
       const tooltip = document.getElementById("hover-tooltip");
       const tooltipContent = document.getElementById("tooltip-content");
+      function isDesktopHoverDevice() {
+        return window.innerWidth >= 1024 && window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+      }
+      function hideHoverTooltip() {
+        if (tooltip) tooltip.classList.add("hidden");
+      }
       document.body.addEventListener("mouseover", (e) => {
+        if (!isDesktopHoverDevice()) { hideHoverTooltip(); return; }
         const token = e.target.closest(".vocab-token");
         if (!token) return;
         const entry = VOCAB_DB[token.dataset.word];
@@ -7587,8 +7603,41 @@ LONG_READING_SET3.sourceLabel = "I Drive Safely 原文";
         tooltip.style.left = `${Math.min(Math.max(12, rect.left), window.innerWidth - 315)}px`;
       });
       document.body.addEventListener("mouseout", (e) => {
-        if (e.target.closest(".vocab-token")) tooltip.classList.add("hidden");
+        if (e.target.closest(".vocab-token")) hideHoverTooltip();
       });
+      document.body.addEventListener("touchstart", hideHoverTooltip, { passive: true });
+      document.body.addEventListener("click", hideHoverTooltip);
+      window.addEventListener("scroll", hideHoverTooltip, { passive: true });
+
+      // 手机端折叠菜单控制（展开/收起 + 切换题型后自动收起 + 同步状态绿点镜像）
+      const mobileMenuBtn = document.getElementById("mobile-menu-toggle-btn");
+      const headerToolsDrawer = document.getElementById("header-tools-drawer");
+      const mobileMenuLabel = document.getElementById("mobile-menu-label");
+      function setMobileMenuOpen(open) {
+        if (!headerToolsDrawer || !mobileMenuBtn) return;
+        headerToolsDrawer.classList.toggle("hidden", !open);
+        mobileMenuBtn.setAttribute("aria-expanded", String(open));
+        if (mobileMenuLabel) mobileMenuLabel.textContent = open ? "✕ 收起" : "⚙️ 菜单";
+      }
+      if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener("click", () => {
+          const isOpen = !headerToolsDrawer.classList.contains("hidden");
+          setMobileMenuOpen(!isOpen);
+        });
+      }
+      document.body.addEventListener("click", (e) => {
+        if (window.innerWidth < 1024 && e.target.closest("#module-nav [data-module]")) {
+          setMobileMenuOpen(false);
+        }
+      });
+      // 镜像云同步状态指示点到手机常驻菜单按钮上
+      const syncDotEl = document.getElementById("sync-status-dot");
+      const mobileSyncDotEl = document.getElementById("mobile-sync-dot");
+      if (syncDotEl && mobileSyncDotEl && typeof MutationObserver === "function") {
+        new MutationObserver(() => {
+          mobileSyncDotEl.className = syncDotEl.className;
+        }).observe(syncDotEl, { attributes: true, attributeFilter: ["class"] });
+      }
 
       // 悬停右侧选项动态溯源连线
       const quizPanelEl = document.getElementById("panel-quiz");
